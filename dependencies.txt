@@ -1,0 +1,3 @@
+GLFW 3.x.x
+GLEW 2.x.x
+glm 0.9.x
