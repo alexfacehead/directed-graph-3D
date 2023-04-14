@@ -48,12 +48,21 @@ GLuint Shader::loadShader(const std::string& shaderPath, GLenum shaderType) {
 }
 
 void Shader::checkShaderErrors(GLuint shader, const std::string& shaderPath, GLenum statusType) {
-  GLint success;
-  glGetShaderiv(shader, statusType, &success);
-  if (!success) {
-    GLchar infoLog[1024];
-    glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-    std::string status = (statusType == GL_COMPILE_STATUS) ? "COMPILATION" : "LINKING";
-    std::cerr << "ERROR::SHADER::" << status << "::" << shaderPath << "\n" << infoLog << std::endl;
-  }
+    GLint success;
+    if (statusType == GL_COMPILE_STATUS) {
+        glGetShaderiv(shader, statusType, &success);
+        if (!success) {
+            GLchar infoLog[1024];
+            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+            std::cerr << "ERROR::SHADER::COMPILATION::" << shaderPath << "\n" << infoLog << std::endl;
+        }
+    } else {
+        glGetProgramiv(shader, statusType, &success);
+        if (!success) {
+            GLchar infoLog[1024];
+            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+            std::cerr << "ERROR::SHADER::LINKING::" << shaderPath << "\n" << infoLog << std::endl;
+        }
+    }
 }
+

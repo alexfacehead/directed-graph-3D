@@ -13,7 +13,7 @@ int main() {
   }
 
   // Create a window with GLFW
-  GLFWwindow *window = glfwCreateWindow(640, 480, "My Window", NULL, NULL);
+  GLFWwindow *window = glfwCreateWindow(1024, 768, "My Window", NULL, NULL);
   if (!window) {
     // Window creation failed
     glfwTerminate();
@@ -27,7 +27,7 @@ int main() {
   glewInit();
 
   // Load shader files
-  Shader shader("vertex_shader.glsl", "fragment_shader.glsl");
+  Shader shader("./vertex_shader.glsl", "./fragment_shader.glsl");
 
   // Create a mesh, material, and renderer
   // You'll need to provide your own vertex and index data for the Mesh constructor
@@ -44,8 +44,8 @@ int main() {
 
     // Update your scene and perform any required calculations
     // Create a Shader instance
-    Shader shader("path/to/vertex_shader.glsl", "path/to/fragment_shader.glsl");
-
+    Shader shader("./vertex_shader.glsl", "./fragment_shader.glsl");
+    
     // Create a Material instance using the shader
     glm::vec3 ambient(0.1f, 0.1f, 0.1f);
     glm::vec3 diffuse(0.5f, 0.5f, 0.5f);

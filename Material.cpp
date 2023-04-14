@@ -1,22 +1,7 @@
-#include <GL/glew.h>
-#include <glm/glm.hpp>
+#include "Material.h"
 
-class Material {
-public:
-    Material(const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular, float shininess);
-    ~Material();
-
-    void use() const;
-
-private:
-    glm::vec3 m_ambient;
-    glm::vec3 m_diffuse;
-    glm::vec3 m_specular;
-    float m_shininess;
-};
-
-Material::Material(const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular, float shininess)
-    : m_ambient(ambient), m_diffuse(diffuse), m_specular(specular), m_shininess(shininess) {}
+Material::Material(const Shader& shader, const glm::vec3& ambient, const glm::vec3& diffuse, const glm::vec3& specular, float shininess)
+    : m_shader(shader), m_ambient(ambient), m_diffuse(diffuse), m_specular(specular), m_shininess(shininess) {}
 
 Material::~Material() {}
 
