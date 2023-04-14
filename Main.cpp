@@ -1,5 +1,9 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "Mesh.h"
+#include "Material.h"
+#include "Renderer.h"
+#include "Shader.h"
 
 int main() {
   // Initialize GLFW
@@ -22,6 +26,17 @@ int main() {
   // Initialize GLEW
   glewInit();
 
+  // Load shader files
+  Shader shader("vertex_shader.glsl", "fragment_shader.glsl");
+
+  // Create a mesh, material, and renderer
+  // You'll need to provide your own vertex and index data for the Mesh constructor
+  std::vector<Vertex> vertices;
+  std::vector<GLuint> indices;
+  Mesh mesh(vertices, indices);
+  Material material(shader);
+  Renderer renderer;
+
   // Main loop
   while (!glfwWindowShouldClose(window)) {
     // Clear the screen
@@ -30,6 +45,7 @@ int main() {
     // Update your scene and perform any required calculations
 
     // Render your scene here
+    renderer.render(mesh, material);
 
     // Swap front and back buffers
     glfwSwapBuffers(window);
