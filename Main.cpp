@@ -63,18 +63,17 @@ int main() {
 
   Mesh nodeMesh(nodeVertices, nodeIndices);
 
-  std::vector<Vertex> edgeVertices = {
+  std::vector<Vertex> lineVertices = {
       // Edge vertices
       {{0.1f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
       {{0.9f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
   };
 
-  // Edge indices
-  std::vector<GLuint> edgeIndices = {
+  std::vector<GLuint> lineIndices = {
       0, 1, // Edge
   };
 
-  Mesh edgeMesh(edgeVertices, edgeIndices);
+  Mesh edgeMesh(lineVertices, lineIndices);
 
   // Main loop
   while (!glfwWindowShouldClose(window)) {
