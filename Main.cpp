@@ -34,7 +34,7 @@ int main() {
   std::vector<Vertex> vertices;
   std::vector<GLuint> indices;
   Mesh mesh(vertices, indices);
-  Material material(shader);
+  Material material(Shader);
   Renderer renderer;
 
   // Main loop
@@ -43,8 +43,18 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Update your scene and perform any required calculations
+    // Create a Shader instance
+    Shader shader("path/to/vertex_shader.glsl", "path/to/fragment_shader.glsl");
 
-    // Render your scene here
+    // Create a Material instance using the shader
+    glm::vec3 ambient(0.1f, 0.1f, 0.1f);
+    glm::vec3 diffuse(0.5f, 0.5f, 0.5f);
+    glm::vec3 specular(1.0f, 1.0f, 1.0f);
+    float shininess = 32.0f;
+
+    Material material(shader, ambient, diffuse, specular, shininess);
+
+    // Render the scene
     renderer.render(mesh, material);
 
     // Swap front and back buffers
