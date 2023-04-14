@@ -30,19 +30,12 @@ int main() {
   // Load shader files
   Shader shader("./vertex_shader.glsl", "./fragment_shader.glsl");
 
-  // Material constructor requires these attributes
-  glm::vec3 ambient(0.1f, 0.1f, 0.1f);
-  glm::vec3 diffuse(0.5f, 0.5f, 0.5f);
-  glm::vec3 specular(1.0f, 1.0f, 1.0f);
-  float shininess = 32.0f;
-
   // Create a mesh, material, and renderer
   // You'll need to provide your own vertex and index data for the Mesh constructor
   std::vector<Vertex> vertices;
   std::vector<GLuint> indices;
   Mesh mesh(vertices, indices);
-
-  Material material(shader, ambient, diffuse, specular, shininess);
+  Material material(Shader);
   Renderer renderer;
 
   Camera camera(640.0f / 480.0f);
@@ -69,17 +62,36 @@ int main() {
       {{0.9f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
   };
 
+  // Edge vertices
+ // std::vector<Vertex> edgeVertices = {
+  //    {{0.1f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+  //    {{0.9f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+ //};
+
   // Edge indices
   std::vector<GLuint> edgeIndices = {
       0, 1, // Edge
   };
 
-  Mesh edgeMesh(edgeVertices, edgeIndices);
-
   // Main loop
   while (!glfwWindowShouldClose(window)) {
       // Clear the screen
       glClear(GL_COLOR_BUFFER_BIT);
+
+      // Update your scene and perform any required calculations
+      // Create a Shader instance
+      Shader shader("./vertex_shader.glsl", "./fragment_shader.glsl");
+      
+      // Create a Material instance using the shader
+      glm::vec3 ambient(0.1f, 0.1f, 0.1f);
+      glm::vec3 diffuse(0.5f, 0.5f, 0.5f);
+      glm::vec3 specular(1.0f, 1.0f, 1.0f);
+      float shininess = 32.0f;
+
+      Material material(shader, ambient, diffuse, specular, shininess);
+
+      // Create edge mesh
+      Mesh edgeMesh(edgeVertices, edgeIndices);
 
       // Render the scene
       renderer.render(nodeMesh, material, camera);
@@ -87,8 +99,5 @@ int main() {
 
       // Swap front and back buffers
       glfwSwapBuffers(window);
-
+  
       // Poll for and process events
-      glfwPollEvents();
-    }
-}
