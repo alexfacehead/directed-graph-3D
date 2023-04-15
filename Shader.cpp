@@ -65,4 +65,3 @@ void Shader::checkShaderErrors(GLuint shader, const std::string& shaderPath, GLe
         }
     }
 }
-
