@@ -9,9 +9,10 @@ public:
     ~Material();
 
     void use() const;
+    const Shader& getShader() const;
 
 private:
-    Shader m_shader;
+    const Shader& m_shader;
     glm::vec3 m_ambient;
     glm::vec3 m_diffuse;
     glm::vec3 m_specular;

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <glm/gtc/type_ptr.hpp>
 
 Shader::Shader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath) {
   GLuint vertexShader = loadShader(vertexShaderPath, GL_VERTEX_SHADER);
@@ -20,11 +21,41 @@ Shader::Shader(const std::string& vertexShaderPath, const std::string& fragmentS
 }
 
 Shader::~Shader() {
-  glDeleteProgram(program);
+  if (program) glDeleteProgram(program);
+}
+
+Shader::Shader(Shader&& other) noexcept : program(other.program), uniformCache(std::move(other.uniformCache)) {
+  other.program = 0;
+}
+
+Shader& Shader::operator=(Shader&& other) noexcept {
+  if (this != &other) {
+    if (program) glDeleteProgram(program);
+    program = other.program;
+    uniformCache = std::move(other.uniformCache);
+    other.program = 0;
+  }
+  return *this;
 }
 
 void Shader::use() const {
   glUseProgram(program);
+}
+
+GLuint Shader::getProgram() const {
+  return program;
+}
+
+GLint Shader::getUniformLocation(const std::string& name) const {
+  auto it = uniformCache.find(name);
+  if (it != uniformCache.end()) return it->second;
+  GLint loc = glGetUniformLocation(program, name.c_str());
+  uniformCache[name] = loc;
+  return loc;
+}
+
+void Shader::setMat4(const std::string& name, const glm::mat4& value) const {
+  glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(value));
 }
 
 GLuint Shader::loadShader(const std::string& shaderPath, GLenum shaderType) {

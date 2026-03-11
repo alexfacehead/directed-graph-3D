@@ -1,3 +1,6 @@
-GLFW 3.x.x
-GLEW 2.x.x
-glm 0.9.x
+GLFW 3.x
+GLEW 2.x
+GLM 0.9.x or 1.x
+Dear ImGui 1.91.8 (fetched automatically by CMake)
+OpenGL 3.3 core profile
+CMake 3.16+

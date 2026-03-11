@@ -1,0 +1,6 @@
+build/
+*.o
+*.out
+main
+directed_graph
+.DS_Store
