@@ -49,24 +49,11 @@ jobs:
           APP="dist/Hypergraph3D.app"
           mkdir -p "$APP/Contents/MacOS"
           mkdir -p "$APP/Contents/Resources"
-
-          # Put the binary in Resources (not as the direct executable)
           cp build/directed_graph "$APP/Contents/Resources/directed_graph_bin"
           chmod +x "$APP/Contents/Resources/directed_graph_bin"
-
-          # Create a launcher script as the bundle executable
-          # Gatekeeper is lenient with scripts, strict with Mach-O binaries
-          cat > "$APP/Contents/MacOS/Hypergraph3D" << 'LAUNCHER'
-#!/bin/bash
-DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
-xattr -cr "$DIR/directed_graph_bin" 2>/dev/null
-exec "$DIR/directed_graph_bin"
-LAUNCHER
+          cp packaging/macos/launcher.sh "$APP/Contents/MacOS/Hypergraph3D"
           chmod +x "$APP/Contents/MacOS/Hypergraph3D"
-
           cp packaging/macos/Info.plist "$APP/Contents/Info.plist"
-
-          # Create .dmg with Applications symlink for drag-to-install
           mkdir -p dist/dmg_staging
           cp -R "$APP" dist/dmg_staging/
           ln -s /Applications dist/dmg_staging/Applications
