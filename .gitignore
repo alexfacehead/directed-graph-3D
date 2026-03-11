@@ -4,3 +4,4 @@ build/
 main
 directed_graph
 .DS_Store
+.vscode/
