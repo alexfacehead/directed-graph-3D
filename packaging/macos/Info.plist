@@ -13,7 +13,7 @@
     <key>CFBundleShortVersionString</key>
     <string>1.1.0</string>
     <key>CFBundleExecutable</key>
-    <string>directed_graph</string>
+    <string>Hypergraph3D</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>NSHighResolutionCapable</key>

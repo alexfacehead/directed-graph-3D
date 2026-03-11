@@ -42,22 +42,35 @@ jobs:
       - name: Build
         run: cmake --build build --config Release -j4
 
-      # macOS: create .app bundle, ad-hoc sign, package as .dmg
+      # macOS: create .app bundle with launcher script + .dmg
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
           APP="dist/Hypergraph3D.app"
           mkdir -p "$APP/Contents/MacOS"
           mkdir -p "$APP/Contents/Resources"
-          cp build/directed_graph "$APP/Contents/MacOS/"
-          chmod +x "$APP/Contents/MacOS/directed_graph"
+
+          # Put the binary in Resources (not as the direct executable)
+          cp build/directed_graph "$APP/Contents/Resources/directed_graph_bin"
+          chmod +x "$APP/Contents/Resources/directed_graph_bin"
+
+          # Create a launcher script as the bundle executable
+          # Gatekeeper is lenient with scripts, strict with Mach-O binaries
+          cat > "$APP/Contents/MacOS/Hypergraph3D" << 'LAUNCHER'
+#!/bin/bash
+DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
+xattr -cr "$DIR/directed_graph_bin" 2>/dev/null
+exec "$DIR/directed_graph_bin"
+LAUNCHER
+          chmod +x "$APP/Contents/MacOS/Hypergraph3D"
+
           cp packaging/macos/Info.plist "$APP/Contents/Info.plist"
 
-          # Ad-hoc sign: changes Gatekeeper from "damaged" to "unidentified developer"
-          codesign --force --deep --sign - "$APP"
-
-          # Create .dmg from the dist folder (contains the signed .app)
-          hdiutil create -volname "Hypergraph3D" -srcfolder dist/ -ov -format UDZO dist/Hypergraph3D.dmg
+          # Create .dmg with Applications symlink for drag-to-install
+          mkdir -p dist/dmg_staging
+          cp -R "$APP" dist/dmg_staging/
+          ln -s /Applications dist/dmg_staging/Applications
+          hdiutil create -volname "Hypergraph3D" -srcfolder dist/dmg_staging -ov -format UDZO dist/Hypergraph3D.dmg
 
       - name: Package (Linux)
         if: runner.os == 'Linux' && matrix.name == 'Linux'
