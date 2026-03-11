@@ -12,7 +12,7 @@ Starts from a single self-looping vertex, applies a rewriting rule every frame, 
 
 | Platform | Download | How to run |
 |----------|----------|------------|
-| macOS | [directed_graph-macos.zip](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/directed_graph-macos.zip) | Unzip, double-click `Hypergraph3D.command` |
+| macOS | [Hypergraph3D.dmg](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/Hypergraph3D.dmg) | Open `.dmg`, drag to Applications |
 | Linux | [directed_graph-linux.tar.gz](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/directed_graph-linux.tar.gz) | Extract, run `./directed_graph` |
 | Windows | [directed_graph-windows.zip](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/directed_graph-windows.zip) | Unzip, run `directed_graph.exe` |
 

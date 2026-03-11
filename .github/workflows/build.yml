@@ -42,20 +42,46 @@ jobs:
       - name: Build
         run: cmake --build build --config Release -j4
 
-      # Package the binary
+      # macOS: create .app bundle + .dmg
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
-          mkdir -p dist/Hypergraph3D
-          cp build/directed_graph dist/Hypergraph3D/
-          chmod +x dist/Hypergraph3D/directed_graph
-          cat > dist/Hypergraph3D/Hypergraph3D.command << 'LAUNCHER'
-          #!/bin/bash
-          cd "$(dirname "$0")"
-          xattr -cr directed_graph 2>/dev/null
-          ./directed_graph
-          LAUNCHER
-          chmod +x dist/Hypergraph3D/Hypergraph3D.command
+          APP="dist/Hypergraph3D.app"
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
+
+          cp build/directed_graph "$APP/Contents/MacOS/"
+          chmod +x "$APP/Contents/MacOS/directed_graph"
+
+          cat > "$APP/Contents/Info.plist" << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key>
+              <string>Hypergraph3D</string>
+              <key>CFBundleDisplayName</key>
+              <string>Hypergraph 3D</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.alexfacehead.hypergraph3d</string>
+              <key>CFBundleVersion</key>
+              <string>1.1.0</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.1.0</string>
+              <key>CFBundleExecutable</key>
+              <string>directed_graph</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+              <key>LSMinimumSystemVersion</key>
+              <string>10.15</string>
+          </dict>
+          </plist>
+          PLIST
+
+          # Create the .dmg
+          hdiutil create -volname "Hypergraph3D" -srcfolder dist/ -ov -format UDZO dist/Hypergraph3D.dmg
 
       - name: Package (Linux)
         if: runner.os == 'Linux' && matrix.name == 'Linux'
@@ -81,7 +107,7 @@ jobs:
   release:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     permissions:
       contents: write
 
@@ -94,19 +120,24 @@ jobs:
       - name: Package release archives
         run: |
           cd artifacts
-          for dir in */; do
-            name="${dir%/}"
-            if [[ "$name" == *windows* ]]; then
-              (cd "$name" && zip -r "../${name}.zip" .)
-            elif [[ "$name" == *macos* ]]; then
-              (cd "$name" && zip -r "../${name}.zip" Hypergraph3D/)
-            else
-              tar czf "${name}.tar.gz" -C "$name" .
-            fi
-          done
+          # macOS: .dmg is already built, just move it
+          if [ -f directed_graph-macos/Hypergraph3D.dmg ]; then
+            mv directed_graph-macos/Hypergraph3D.dmg ./Hypergraph3D.dmg
+          fi
+          # Linux: tar.gz
+          if [ -d directed_graph-linux ]; then
+            tar czf directed_graph-linux.tar.gz -C directed_graph-linux .
+          fi
+          # Windows: zip
+          if [ -d directed_graph-windows ]; then
+            (cd directed_graph-windows && zip -r ../directed_graph-windows.zip .)
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: artifacts/*.*
+          files: |
+            artifacts/Hypergraph3D.dmg
+            artifacts/directed_graph-linux.tar.gz
+            artifacts/directed_graph-windows.zip
