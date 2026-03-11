@@ -42,7 +42,7 @@ jobs:
       - name: Build
         run: cmake --build build --config Release -j4
 
-      # macOS: create .app bundle + .dmg
+      # macOS: create .app bundle, ad-hoc sign, package as .dmg
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -52,6 +52,11 @@ jobs:
           cp build/directed_graph "$APP/Contents/MacOS/"
           chmod +x "$APP/Contents/MacOS/directed_graph"
           cp packaging/macos/Info.plist "$APP/Contents/Info.plist"
+
+          # Ad-hoc sign: changes Gatekeeper from "damaged" to "unidentified developer"
+          codesign --force --deep --sign - "$APP"
+
+          # Create .dmg from the dist folder (contains the signed .app)
           hdiutil create -volname "Hypergraph3D" -srcfolder dist/ -ov -format UDZO dist/Hypergraph3D.dmg
 
       - name: Package (Linux)
