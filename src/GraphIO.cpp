@@ -3,7 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <ctime>
-#include <sys/stat.h>
+#include <filesystem>
 
 bool GraphIO::save(const Hypergraph& graph, size_t ruleIndex, const std::string& filepath) {
     std::ofstream out(filepath);
@@ -52,7 +52,7 @@ bool GraphIO::load(Hypergraph& graph, size_t& ruleIndex, const std::string& file
 }
 
 std::string GraphIO::generateFilepath() {
-    mkdir("saves", 0755);
+    std::filesystem::create_directories("saves");
     std::time_t now = std::time(nullptr);
     char buf[64];
     std::strftime(buf, sizeof(buf), "saves/graph_%Y%m%d_%H%M%S.txt", std::localtime(&now));
