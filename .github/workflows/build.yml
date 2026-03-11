@@ -49,38 +49,9 @@ jobs:
           APP="dist/Hypergraph3D.app"
           mkdir -p "$APP/Contents/MacOS"
           mkdir -p "$APP/Contents/Resources"
-
           cp build/directed_graph "$APP/Contents/MacOS/"
           chmod +x "$APP/Contents/MacOS/directed_graph"
-
-          cat > "$APP/Contents/Info.plist" << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleName</key>
-              <string>Hypergraph3D</string>
-              <key>CFBundleDisplayName</key>
-              <string>Hypergraph 3D</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.alexfacehead.hypergraph3d</string>
-              <key>CFBundleVersion</key>
-              <string>1.1.0</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.1.0</string>
-              <key>CFBundleExecutable</key>
-              <string>directed_graph</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>NSHighResolutionCapable</key>
-              <true/>
-              <key>LSMinimumSystemVersion</key>
-              <string>10.15</string>
-          </dict>
-          </plist>
-          PLIST
-
-          # Create the .dmg
+          cp packaging/macos/Info.plist "$APP/Contents/Info.plist"
           hdiutil create -volname "Hypergraph3D" -srcfolder dist/ -ov -format UDZO dist/Hypergraph3D.dmg
 
       - name: Package (Linux)
