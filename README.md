@@ -20,15 +20,18 @@ These links always point to the latest release.
 
 ### macOS note
 
-macOS quarantines apps downloaded from the internet. Since this app isn't signed with an Apple Developer certificate, you need to clear the quarantine flag before opening:
+macOS blocks apps downloaded from the internet that aren't signed with an Apple Developer certificate. To open Hypergraph3D after downloading:
 
-```bash
-xattr -cr ~/Downloads/Hypergraph3D.dmg
-```
+1. Open the `.dmg` and drag **Hypergraph3D** to Applications
+2. Try to open it -- macOS will show a warning and refuse
+3. Go to **System Settings > Privacy & Security**, scroll down, and click **Open Anyway** next to the Hypergraph3D message
+4. Click **Open** in the confirmation dialog
 
-Then open the `.dmg` and drag to Applications as usual. This is standard for open-source macOS apps that aren't notarized.
+You only have to do this once. After that it opens normally.
 
-**Or build from source** (requires only CMake and a C++ compiler):
+Alternatively, you can [build from source](#building-from-source) to avoid the security prompt entirely.
+
+**Or build from source** (requires only CMake and a C++ compiler -- no other installs needed):
 ```bash
 ./build.sh          # macOS / Linux
 build.bat           # Windows
@@ -108,22 +111,37 @@ The multilevel coarsening is more expensive (the Fruchterman-Reingold refinement
 
 ## Building from source
 
-All dependencies are fetched by CMake automatically. You just need:
-- CMake 3.16+
-- A C++17 compiler (GCC, Clang, or MSVC)
-- OpenGL drivers (already present on virtually all systems)
+Building from source is the easiest way to run the app without dealing with macOS security prompts or Windows SmartScreen. All library dependencies are downloaded automatically by CMake at build time -- you don't need to install anything beyond a compiler and CMake itself.
+
+### Prerequisites
+
+**macOS:**
+- Install [Xcode Command Line Tools](https://developer.apple.com/xcode/): `xcode-select --install`
+- Install [CMake](https://cmake.org/download/): `brew install cmake` (or download from cmake.org)
+
+**Linux (Ubuntu/Debian):**
+- `sudo apt-get install build-essential cmake libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libwayland-dev libxkbcommon-dev`
+
+**Linux (Fedora):**
+- `sudo dnf install gcc-c++ cmake mesa-libGL-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel libXext-devel wayland-devel libxkbcommon-devel`
+
+**Windows:**
+- Install [Visual Studio](https://visualstudio.microsoft.com/) (Community edition is free) with the "Desktop development with C++" workload
+- Install [CMake](https://cmake.org/download/) (or use the one bundled with Visual Studio)
+
+### Build and run
 
 ```bash
 # macOS or Linux
 ./build.sh
 ./build/directed_graph
 
-# Windows
+# Windows (from Developer Command Prompt or PowerShell)
 build.bat
 build\Release\directed_graph.exe
 ```
 
-Or manually:
+Or if you prefer running CMake directly:
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
