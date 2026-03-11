@@ -9,7 +9,14 @@ Starts from a single self-looping vertex, applies a rewriting rule every frame, 
 ## Quick start
 
 **Download a release** (no build tools needed):
-Go to the [Releases](../../releases) page, grab the binary for your OS, and run it.
+
+| Platform | Download | How to run |
+|----------|----------|------------|
+| macOS | [directed_graph-macos.zip](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/directed_graph-macos.zip) | Unzip, double-click `Hypergraph3D.command` |
+| Linux | [directed_graph-linux.tar.gz](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/directed_graph-linux.tar.gz) | Extract, run `./directed_graph` |
+| Windows | [directed_graph-windows.zip](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/directed_graph-windows.zip) | Unzip, run `directed_graph.exe` |
+
+These links always point to the latest release.
 
 **Or build from source** (requires only CMake and a C++ compiler):
 ```bash
