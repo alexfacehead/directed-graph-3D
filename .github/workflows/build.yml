@@ -58,6 +58,8 @@ jobs:
           cp -R "$APP" dist/dmg_staging/
           ln -s /Applications dist/dmg_staging/Applications
           hdiutil create -volname "Hypergraph3D" -srcfolder dist/dmg_staging -ov -format UDZO dist/Hypergraph3D.dmg
+          # Clean up intermediate files — only keep the .dmg for artifact upload
+          rm -rf dist/Hypergraph3D.app dist/dmg_staging
 
       - name: Package (Linux)
         if: runner.os == 'Linux' && matrix.name == 'Linux'
