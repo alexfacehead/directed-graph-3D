@@ -1,20 +1,38 @@
 cmake_minimum_required(VERSION 3.16)
-project(directed-graph-3D LANGUAGES CXX)
+project(directed-graph-3D LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Suppress macOS OpenGL deprecation warnings
-add_definitions(-DGL_SILENCE_DEPRECATION)
+if(APPLE)
+    add_definitions(-DGL_SILENCE_DEPRECATION)
+endif()
 
-# Find dependencies
-find_package(glfw3 REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(glm REQUIRED)
-find_package(OpenGL REQUIRED)
-
-# Fetch Dear ImGui
+# --- All dependencies via FetchContent (no system installs needed) ---
 include(FetchContent)
+
+# GLFW
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(glfw)
+
+# GLM
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.1
+)
+FetchContent_MakeAvailable(glm)
+
+# Dear ImGui
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
@@ -33,6 +51,12 @@ set(IMGUI_SOURCES
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
+# GLAD (local, generated for OpenGL 3.3 Core)
+set(GLAD_SOURCES glad/src/gl.c)
+
+# OpenGL
+find_package(OpenGL REQUIRED)
+
 add_executable(directed_graph
     src/Main.cpp
     src/Mesh.cpp
@@ -45,30 +69,42 @@ add_executable(directed_graph
     src/RuleEngine.cpp
     src/GraphIO.cpp
     ${IMGUI_SOURCES}
+    ${GLAD_SOURCES}
 )
 
 target_include_directories(directed_graph PRIVATE
     src
+    glad/include
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
 )
 
 target_link_libraries(directed_graph
     glfw
-    GLEW::GLEW
     OpenGL::GL
     glm::glm
 )
 
-# Aggressive optimization: -O3, native arch, fast math, LTO
-target_compile_options(directed_graph PRIVATE
-    -O3
-    -march=native
-    -ffast-math
-    -funroll-loops
-)
-set_property(TARGET directed_graph PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+# Platform-specific link libraries
+if(UNIX AND NOT APPLE)
+    target_link_libraries(directed_graph dl)
+endif()
 
-# Copy shader files to build directory
-configure_file(shaders/vertex_shader.glsl ${CMAKE_BINARY_DIR}/vertex_shader.glsl COPYONLY)
-configure_file(shaders/fragment_shader.glsl ${CMAKE_BINARY_DIR}/fragment_shader.glsl COPYONLY)
+# Optimization flags (platform-aware)
+if(MSVC)
+    target_compile_options(directed_graph PRIVATE /O2 /fp:fast)
+else()
+    target_compile_options(directed_graph PRIVATE
+        -O3
+        -ffast-math
+        -funroll-loops
+    )
+    # Only use -march=native for local builds, not CI cross-platform
+    if(NOT DEFINED ENV{CI})
+        target_compile_options(directed_graph PRIVATE -march=native)
+    endif()
+endif()
+
+if(NOT MSVC)
+    set_property(TARGET directed_graph PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()

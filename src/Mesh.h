@@ -3,7 +3,7 @@
 #pragma once
 
 #include <vector>
-#include <GL/glew.h>
+#include <glad/gl.h>
 
 struct Vertex {
   GLfloat position[3];

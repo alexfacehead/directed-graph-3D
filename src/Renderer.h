@@ -1,7 +1,7 @@
 // Renderer.h
 #pragma once
 
-#include <GL/glew.h>
+#include <glad/gl.h>
 #include "Mesh.h"
 #include "Material.h"
 #include "Camera.h" // Include the Camera header

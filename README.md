@@ -4,7 +4,20 @@ Real-time 3D visualization of Wolfram Physics-style hypergraph rewriting.
 
 Starts from a single self-looping vertex, applies a rewriting rule every frame, and grows into an organic network structure. The layout algorithm is designed to reveal the topology of the graph rather than squashing it into a ball.
 
-![Branching rule at 10,000 vertices](https://img.shields.io/badge/C%2B%2B-17-blue) ![OpenGL 3.3](https://img.shields.io/badge/OpenGL-3.3-green)
+![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![OpenGL 3.3](https://img.shields.io/badge/OpenGL-3.3-green)
+
+## Quick start
+
+**Download a release** (no build tools needed):
+Go to the [Releases](../../releases) page, grab the binary for your OS, and run it.
+
+**Or build from source** (requires only CMake and a C++ compiler):
+```bash
+./build.sh          # macOS / Linux
+build.bat           # Windows
+```
+
+All dependencies (GLFW, GLM, ImGui, GLAD) are fetched automatically by CMake. No `brew install`, no `apt-get install`, no vcpkg.
 
 ## Background
 
@@ -62,72 +75,70 @@ The incremental physics step is O(edges), not O(vertices^2). At 10,000 vertices 
 
 The multilevel coarsening is more expensive (the Fruchterman-Reingold refinement at each level is O(n^2) for that level), but it only triggers when the vertex count doubles and stops triggering above 2,000 vertices. After that, the local-only physics maintains the structure on its own.
 
-Compiler flags: `-O3 -march=native -ffast-math -funroll-loops` with link-time optimization enabled.
-
 ## Controls
 
 | Control | What it does |
 |---------|-------------|
-| Pause | Stops both rule application and physics |
+| Start / Stop | Begin or pause the simulation |
+| Reset | Clear the graph and start over with the current rule |
+| Max Edges | Set the growth limit (editable when stopped) |
 | Interval | Frames between rule applications (1 = every frame, 30 = slow growth) |
 | Zoom | Slider or scroll wheel |
 | Orbit | Click and drag to rotate |
-| Rule | Dropdown to switch rules. Reseeds the graph from scratch |
+| Rule | Dropdown to switch rules (available when stopped) |
 | Save | Writes graph state to `saves/` with a timestamp |
 | Load | Type a path and click Load to restore |
 
-## Building
+## Building from source
 
-### macOS (Homebrew)
+All dependencies are fetched by CMake automatically. You just need:
+- CMake 3.16+
+- A C++17 compiler (GCC, Clang, or MSVC)
+- OpenGL drivers (already present on virtually all systems)
 
-```
-brew install glfw glew glm cmake
-cd directed-graph-3D
-mkdir build && cd build
-cmake ..
-cmake --build .
-./directed_graph
-```
+```bash
+# macOS or Linux
+./build.sh
+./build/directed_graph
 
-### Linux (apt)
-
-```
-sudo apt-get install libglfw3-dev libglew-dev libglm-dev cmake build-essential
-cd directed-graph-3D
-mkdir build && cd build
-cmake ..
-cmake --build .
-./directed_graph
+# Windows
+build.bat
+build\Release\directed_graph.exe
 ```
 
-CMake fetches Dear ImGui v1.91.8 automatically via FetchContent.
+Or manually:
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+```
 
 ## Project structure
 
 ```
 src/
-  Main.cpp          - Window setup, ImGui UI, render loop, mouse orbit
-  Hypergraph.h/cpp  - Flat packed edge storage, O(1) add/remove
-  RuleEngine.h/cpp  - Four Wolfram-style rewriting rules, reservoir sampling
-  ForceLayout.h/cpp - Multilevel coarsening layout + local-only incremental physics
-  Camera.h/cpp      - Spherical coordinate orbit camera with dirty-flag caching
-  GraphIO.h/cpp     - Text-based save/load
-  Mesh.h/cpp        - Dynamic OpenGL VBO/EBO with capacity doubling
-  Shader.h/cpp      - GLSL loader with cached uniform locations
-  Material.h/cpp    - Shader reference + material properties
-  Renderer.h/cpp    - Sets MVP uniforms and draws
-shaders/
-  vertex_shader.glsl
-  fragment_shader.glsl
+  Main.cpp            - Window setup, ImGui UI, render loop, mouse orbit
+  Hypergraph.h/cpp    - Flat packed edge storage, O(1) add/remove
+  RuleEngine.h/cpp    - Four Wolfram-style rewriting rules, reservoir sampling
+  ForceLayout.h/cpp   - Multilevel coarsening layout + local-only incremental physics
+  Camera.h/cpp        - Spherical coordinate orbit camera
+  GraphIO.h/cpp       - Text-based save/load
+  Mesh.h/cpp          - Dynamic OpenGL VBO/EBO with capacity doubling
+  Shader.h/cpp        - Embedded GLSL shaders with cached uniform locations
+  Shaders_embedded.h  - Vertex and fragment shaders as C++ string literals
+  Material.h/cpp      - Shader reference + material properties
+  Renderer.h/cpp      - Sets MVP uniforms and draws
+glad/                 - GLAD OpenGL 3.3 core loader (generated, vendored)
 ```
 
 ## Dependencies
 
-- OpenGL 3.3 core profile
-- [GLFW](https://www.glfw.org/) for windowing
-- [GLEW](http://glew.sourceforge.net/) for OpenGL extension loading
-- [GLM](https://github.com/g-truc/glm) for vector/matrix math
-- [Dear ImGui](https://github.com/ocornut/imgui) v1.91.8 (fetched automatically by CMake)
+All fetched automatically at build time:
+
+- [GLFW 3.4](https://www.glfw.org/) for windowing
+- [GLM 1.0.1](https://github.com/g-truc/glm) for vector/matrix math
+- [Dear ImGui v1.91.8](https://github.com/ocornut/imgui) for the UI overlay
+- [GLAD](https://github.com/Dav1dde/glad) for OpenGL function loading (vendored in `glad/`)
+- OpenGL 3.3 core profile (system-provided)
 
 ## Lessons learned
 

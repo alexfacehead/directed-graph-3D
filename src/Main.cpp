@@ -1,4 +1,4 @@
-#include <GL/glew.h>
+#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <cmath>
 #include <cstdlib>
@@ -14,6 +14,7 @@
 #include "Material.h"
 #include "Renderer.h"
 #include "Shader.h"
+#include "Shaders_embedded.h"
 #include "Camera.h"
 #include "Hypergraph.h"
 #include "ForceLayout.h"
@@ -75,8 +76,11 @@ int main() {
     if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
 
-    glewExperimental = GL_TRUE;
-    glewInit();
+    if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -108,7 +112,7 @@ int main() {
         style.Colors[ImGuiCol_Separator] = ImVec4(0.15f, 0.15f, 0.22f, 1.0f);
     }
 
-    Shader shader("./vertex_shader.glsl", "./fragment_shader.glsl");
+    Shader shader = Shader::fromSource(EmbeddedShaders::vertexShader, EmbeddedShaders::fragmentShader);
     Material material(shader, glm::vec3(0.1f), glm::vec3(0.5f), glm::vec3(1.0f), 32.0f);
     Renderer renderer;
     Camera camera(1024.0f / 768.0f);
@@ -122,17 +126,17 @@ int main() {
     Mesh nodeMesh(GL_POINTS);
     Mesh edgeMesh(GL_LINES);
 
-    // Pre-reserve rendering buffers for max capacity
-    const size_t maxVertices = 10000;
-    nodeVerts.reserve(maxVertices);
-    nodeIdx.reserve(maxVertices);
-    lineVerts.reserve(maxVertices * 4);
-    lineIdx.reserve(maxVertices * 4);
+    // Pre-reserve rendering buffers
+    nodeVerts.reserve(10000);
+    nodeIdx.reserve(10000);
+    lineVerts.reserve(40000);
+    lineIdx.reserve(40000);
 
     int frameCount = 0;
     int currentRuleUI = static_cast<int>(ruleEngine.getCurrentRule());
-    bool paused = false;
+    bool running = false;
     int ruleInterval = 1;
+    int maxEdges = 20000;
     std::string statusMessage;
 
     bool dragging = false;
@@ -185,25 +189,71 @@ int main() {
 
         // ImGui panel
         ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(280, 0), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(320, 0), ImVec2(500, FLT_MAX));
+        ImGui::SetNextWindowSize(ImVec2(340, 0), ImGuiCond_FirstUseEver);
         ImGui::Begin("Controls");
 
-        ImGui::Checkbox("Pause", &paused);
+        // Start / Stop / Reset buttons
+        bool atLimit = static_cast<int>(graph.getNumEdges()) >= maxEdges;
+        if (!running) {
+            if (ImGui::Button("Start", ImVec2(95, 36))) {
+                running = true;
+                if (graph.getNumVertices() == 0) {
+                    ruleEngine.seedGraph(graph, ruleEngine.getCurrentRule());
+                    lastCoarsenSize = 0;
+                    frameCount = 0;
+                }
+            }
+        } else {
+            if (ImGui::Button("Stop", ImVec2(95, 36))) {
+                running = false;
+            }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Reset", ImVec2(95, 36))) {
+            running = false;
+            graph = Hypergraph(0);
+            ruleEngine.seedGraph(graph, ruleEngine.getCurrentRule());
+            lastCoarsenSize = 0;
+            frameCount = 0;
+        }
+
+        ImGui::SameLine();
+        if (running) {
+            ImGui::TextColored(ImVec4(0.0f, 0.9f, 0.4f, 1.0f), atLimit ? "LIMIT" : "RUNNING");
+        } else {
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "STOPPED");
+        }
+
+        ImGui::Separator();
+
+        // Max edges — editable only when stopped
+        if (running) ImGui::BeginDisabled();
+        ImGui::InputInt("Max Edges", &maxEdges, 1000, 5000);
+        if (maxEdges < 100) maxEdges = 100;
+        if (maxEdges > 200000) maxEdges = 200000;
+        if (running) ImGui::EndDisabled();
+
         ImGui::SliderInt("Interval", &ruleInterval, 1, 30);
 
+        ImGui::Separator();
         ImGui::Text("Vertices: %zu", graph.getNumVertices());
-        ImGui::Text("Edges: %zu", graph.getNumEdges());
+        ImGui::Text("Edges: %zu / %d", graph.getNumEdges(), maxEdges);
 
         ImGui::Separator();
         ImGui::SliderFloat("Zoom", &camera.distance, 0.5f, 100.0f, "%.1f");
         ImGui::Separator();
 
+        // Rule selector — disabled while running
+        if (running) ImGui::BeginDisabled();
         if (ImGui::BeginCombo("Rule", ruleEngine.getRuleName(currentRuleUI).c_str())) {
             for (size_t i = 0; i < ruleEngine.getNumRules(); ++i) {
                 bool selected = (currentRuleUI == static_cast<int>(i));
                 if (ImGui::Selectable(ruleLabels[i].c_str(), selected)) {
                     currentRuleUI = static_cast<int>(i);
                     ruleEngine.setCurrentRule(i);
+                    graph = Hypergraph(0);
                     ruleEngine.seedGraph(graph, i);
                     lastCoarsenSize = 0;
                     frameCount = 0;
@@ -212,6 +262,7 @@ int main() {
             }
             ImGui::EndCombo();
         }
+        if (running) ImGui::EndDisabled();
 
         ImGui::Separator();
 
@@ -248,9 +299,9 @@ int main() {
 
         ImGui::End();
 
-        if (!paused) {
+        if (running) {
             if (frameCount % ruleInterval == 0
-                && graph.getNumVertices() < maxVertices) {
+                && static_cast<int>(graph.getNumEdges()) < maxEdges) {
                 ruleEngine.applyStep(graph);
             }
 
