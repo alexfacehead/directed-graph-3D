@@ -12,11 +12,21 @@ Starts from a single self-looping vertex, applies a rewriting rule every frame, 
 
 | Platform | Download | How to run |
 |----------|----------|------------|
-| macOS | [Hypergraph3D.dmg](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/Hypergraph3D.dmg) | Open `.dmg`, drag to Applications |
+| macOS | [Hypergraph3D.dmg](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/Hypergraph3D.dmg) | See [macOS note](#macos-note) below |
 | Linux | [directed_graph-linux.tar.gz](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/directed_graph-linux.tar.gz) | Extract, run `./directed_graph` |
 | Windows | [directed_graph-windows.zip](https://github.com/alexfacehead/directed-graph-3D/releases/latest/download/directed_graph-windows.zip) | Unzip, run `directed_graph.exe` |
 
 These links always point to the latest release.
+
+### macOS note
+
+macOS quarantines apps downloaded from the internet. Since this app isn't signed with an Apple Developer certificate, you need to clear the quarantine flag before opening:
+
+```bash
+xattr -cr ~/Downloads/Hypergraph3D.dmg
+```
+
+Then open the `.dmg` and drag to Applications as usual. This is standard for open-source macOS apps that aren't notarized.
 
 **Or build from source** (requires only CMake and a C++ compiler):
 ```bash
