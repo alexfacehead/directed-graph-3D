@@ -8,13 +8,13 @@ class ForceLayout {
 public:
     float repulsionStrength = 1.0f;
     float attractionStrength = 0.3f;
-    float restLength = 0.15f;
+    float restLength = 0.25f;
     float damping = 0.85f;
     float maxForce = 2.0f;
     float dt = 0.016f;
 
     void step(Hypergraph& graph);
-    void computeInitialLayout(Hypergraph& graph);
+    void computeInitialLayout(Hypergraph& graph, size_t totalVertices = 0);
 
 private:
     // Persistent buffers — allocated once, reused every frame (zero alloc per step)

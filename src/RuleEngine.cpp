@@ -21,6 +21,10 @@ RuleEngine::RuleEngine() {
         "{{x,y},{x,z}} -> {{w,y},{w,z},{x,w}}", rule3});
     rules.push_back({"Knitting",
         "{{x,y},{x,z}} -> {{y,z},{x,w},{y,w}}", rule4});
+    rules.push_back({"Chain",
+        "{{x,y},{x,z}} -> {{x,w},{w,y},{w,z},{y,z}}", rule5});
+    rules.push_back({"Crystalline",
+        "{{x,y},{x,z}} -> {{x,y},{x,z},{y,w},{z,w},{x,w}}", rule6});
 }
 
 bool RuleEngine::applyStep(Hypergraph& graph) {
@@ -47,46 +51,28 @@ const std::string& RuleEngine::getRuleDescription(size_t i) const { return rules
 size_t RuleEngine::getCurrentRule() const { return currentRule; }
 void RuleEngine::setCurrentRule(size_t index) { currentRule = index; }
 
-// Reservoir sampling: find random {{x,y},{x,z}} match in O(edges) time, O(V) memory.
-// Builds vertex->edge index map, then streams through pairs picking uniformly at random.
+// Reservoir sampling: find random {{x,y},{x,z}} match using persistent adjacency.
+// No CSR rebuild — reads getAdj() directly. O(sum of degree^2) worst case but
+// typically much faster than the old O(V+E) rebuild approach.
 bool RuleEngine::findSharedPair(const Hypergraph& g, std::mt19937& rng,
                                 uint32_t& x, uint32_t& y, uint32_t& z,
                                 size_t& edgeA, size_t& edgeB) {
     size_t ne = g.getNumEdges();
     if (ne < 2) return false;
 
-    // Build vertex -> edge index lists (flat vectors, no hash tables)
     size_t nv = g.getNumVertices();
-    // Count edges per vertex first (for reserve)
-    std::vector<uint32_t> counts(nv, 0);
-    for (size_t i = 0; i < ne; ++i) {
-        uint32_t a = g.edgeA(i), b = g.edgeB(i);
-        if (a < nv) counts[a]++;
-        if (b < nv && b != a) counts[b]++;
-    }
-
-    // Build adjacency using offsets (CSR-lite)
-    std::vector<uint32_t> offsets(nv + 1, 0);
-    for (size_t i = 0; i < nv; ++i) offsets[i + 1] = offsets[i] + counts[i];
-    std::vector<uint32_t> adjEdges(offsets[nv]);
-    std::vector<uint32_t> pos(nv, 0); // write cursor per vertex
-    for (size_t i = 0; i < ne; ++i) {
-        uint32_t a = g.edgeA(i), b = g.edgeB(i);
-        if (a < nv) adjEdges[offsets[a] + pos[a]++] = static_cast<uint32_t>(i);
-        if (b < nv && b != a) adjEdges[offsets[b] + pos[b]++] = static_cast<uint32_t>(i);
-    }
-
-    // Reservoir sampling over all valid (edgeA, edgeB, x, y, z) matches
     size_t matchCount = 0;
     bool found = false;
 
     for (uint32_t vtx = 0; vtx < nv; ++vtx) {
-        uint32_t start = offsets[vtx], end = offsets[vtx + 1];
-        if (end - start < 2) continue;
+        const auto& adj = g.getAdj(vtx);
+        if (adj.size() < 2) continue;
 
-        for (uint32_t ai = start; ai < end; ++ai) {
-            for (uint32_t bi = ai + 1; bi < end; ++bi) {
-                uint32_t iA = adjEdges[ai], iB = adjEdges[bi];
+        for (size_t ai = 0; ai < adj.size(); ++ai) {
+            for (size_t bi = ai + 1; bi < adj.size(); ++bi) {
+                uint32_t iA = adj[ai], iB = adj[bi];
+                if (iA >= ne || iB >= ne) continue; // safety check
+
                 uint32_t a0 = g.edgeA(iA), a1 = g.edgeB(iA);
                 uint32_t b0 = g.edgeA(iB), b1 = g.edgeB(iB);
 
@@ -94,7 +80,6 @@ bool RuleEngine::findSharedPair(const Hypergraph& g, std::mt19937& rng,
                 uint32_t zz = (b0 == vtx) ? b1 : b0;
 
                 matchCount++;
-                // Reservoir sampling: keep with probability 1/matchCount
                 std::uniform_int_distribution<size_t> pick(0, matchCount - 1);
                 if (pick(rng) == 0) {
                     x = vtx; y = yy; z = zz;
@@ -170,5 +155,43 @@ bool RuleEngine::rule4(Hypergraph& g, std::mt19937& rng) {
     g.addEdge(y, z);
     g.addEdge(x, w);
     g.addEdge(y, w);
+    return true;
+}
+
+// Chain: {{x,y},{x,z}} -> {{x,w},{w,y},{w,z},{y,z}}
+// Creates filamentary structures with cross-links. The new vertex w replaces
+// x as the hub, and y-z get directly connected. Produces long spindly chains.
+bool RuleEngine::rule5(Hypergraph& g, std::mt19937& rng) {
+    uint32_t x, y, z; size_t eA, eB;
+    if (!findSharedPair(g, rng, x, y, z, eA, eB)) return false;
+
+    glm::vec3 mid = (g.getPosition(x) + g.getPosition(y) + g.getPosition(z)) / 3.0f;
+    uint32_t w = static_cast<uint32_t>(g.addVertex(mid + randomOffset(rng)));
+
+    size_t hi = std::max(eA, eB), lo = std::min(eA, eB);
+    g.removeEdge(hi);
+    g.removeEdge(lo);
+
+    g.addEdge(x, w);
+    g.addEdge(w, y);
+    g.addEdge(w, z);
+    g.addEdge(y, z);
+    return true;
+}
+
+// Crystalline: {{x,y},{x,z}} -> {{x,y},{x,z},{y,w},{z,w},{x,w}}
+// Keeps original edges intact and adds three new edges to a fresh vertex.
+// Produces very dense, lattice-like growth with high connectivity.
+bool RuleEngine::rule6(Hypergraph& g, std::mt19937& rng) {
+    uint32_t x, y, z; size_t eA, eB;
+    if (!findSharedPair(g, rng, x, y, z, eA, eB)) return false;
+
+    glm::vec3 mid = (g.getPosition(x) + g.getPosition(y) + g.getPosition(z)) / 3.0f;
+    uint32_t w = static_cast<uint32_t>(g.addVertex(mid + randomOffset(rng)));
+
+    // Don't remove matched edges — keep them
+    g.addEdge(y, w);
+    g.addEdge(z, w);
+    g.addEdge(x, w);
     return true;
 }

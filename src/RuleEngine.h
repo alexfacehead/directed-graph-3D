@@ -34,6 +34,8 @@ private:
     static bool rule2(Hypergraph& g, std::mt19937& rng);
     static bool rule3(Hypergraph& g, std::mt19937& rng);
     static bool rule4(Hypergraph& g, std::mt19937& rng);
+    static bool rule5(Hypergraph& g, std::mt19937& rng);
+    static bool rule6(Hypergraph& g, std::mt19937& rng);
 
     static bool findSharedPair(const Hypergraph& g, std::mt19937& rng,
                                uint32_t& x, uint32_t& y, uint32_t& z,

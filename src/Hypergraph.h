@@ -30,10 +30,18 @@ public:
     const glm::vec3& getPosition(size_t v) const { return positions[v]; }
     glm::vec3& getVelocity(size_t v) { return velocities[v]; }
 
+    // Persistent adjacency: adjList[v] = edge indices touching vertex v
+    const std::vector<uint32_t>& getAdj(uint32_t v) const { return adjList[v]; }
+    size_t getDegree(uint32_t v) const { return adjList[v].size(); }
+
 private:
     size_t numVerts = 0;
     size_t numEdges = 0;
     std::vector<glm::vec3> positions;
     std::vector<glm::vec3> velocities;
     std::vector<uint32_t> edges; // packed pairs
+    std::vector<std::vector<uint32_t>> adjList; // per-vertex edge indices
+
+    void removeEdgeFromAdj(uint32_t vertex, uint32_t edgeIdx);
+    void replaceEdgeInAdj(uint32_t vertex, uint32_t oldIdx, uint32_t newIdx);
 };

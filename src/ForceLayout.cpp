@@ -69,9 +69,10 @@ void ForceLayout::step(Hypergraph& graph) {
     }
 }
 
-void ForceLayout::computeInitialLayout(Hypergraph& graph) {
+void ForceLayout::computeInitialLayout(Hypergraph& graph, size_t totalVertices) {
     const size_t n = graph.getNumVertices();
     if (n < 4) return;
+    if (totalVertices == 0) totalVertices = n;
 
     const size_t ne = graph.getNumEdges();
     const uint32_t* ed = graph.edgeData();
@@ -170,11 +171,27 @@ void ForceLayout::computeInitialLayout(Hypergraph& graph) {
 
     if (levels.size() < 2) return;
 
+    // Scale iterations based on graph size to prevent freezes on large graphs
+    size_t coarsestIters, fineIters, finestIters;
+    if (totalVertices > 5000) {
+        coarsestIters = 80;
+        fineIters = 30;
+        finestIters = 50;
+    } else if (totalVertices > 1000) {
+        coarsestIters = 150;
+        fineIters = 50;
+        finestIters = 80;
+    } else {
+        coarsestIters = 300;
+        fineIters = 80;
+        finestIters = 150;
+    }
+
     // Refine coarsest level starting from inherited positions (midpoints from
     // coarsening), NOT random. This preserves the current layout's orientation
     // and prevents visual "snapping" when coarsening triggers.
     auto& coarsest = levels.back();
-    layoutLevel(coarsest, 300);
+    layoutLevel(coarsest, coarsestIters);
 
     // Project back up through levels
     std::uniform_real_distribution<float> jitter(-0.05f, 0.05f);
@@ -191,7 +208,7 @@ void ForceLayout::computeInitialLayout(Hypergraph& graph) {
             }
         }
 
-        size_t iters = (l == 0) ? 150 : 80;
+        size_t iters = (l == 0) ? finestIters : fineIters;
         layoutLevel(fineLevel, iters);
     }
 

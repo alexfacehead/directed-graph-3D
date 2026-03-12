@@ -5,6 +5,7 @@
 #include <ctime>
 #include <iostream>
 #include <string>
+#include <filesystem>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -21,15 +22,55 @@
 #include "RuleEngine.h"
 #include "GraphIO.h"
 
-static const float CYAN_R = 0.0f;
-static const float CYAN_G = 0.8f;
-static const float CYAN_B = 1.0f;
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+// Color modes
+enum ColorMode { COLOR_DEGREE = 0, COLOR_AGE = 1 };
+static const char* colorModeNames[] = { "Degree", "Age" };
 
 // Pre-allocated rendering buffers — cleared and refilled each frame, never freed
 static std::vector<Vertex> nodeVerts;
 static std::vector<GLuint> nodeIdx;
 static std::vector<Vertex> lineVerts;
 static std::vector<GLuint> lineIdx;
+
+// Vertex color cache (reused each frame)
+static std::vector<float> vertColors; // packed r,g,b per vertex
+
+static void computeVertexColors(const Hypergraph& graph, int colorMode) {
+    const size_t n = graph.getNumVertices();
+    vertColors.resize(n * 3);
+
+    if (colorMode == COLOR_DEGREE) {
+        for (size_t i = 0; i < n; ++i) {
+            size_t deg = graph.getDegree(static_cast<uint32_t>(i));
+            float t;
+            if (deg <= 2) t = 0.0f;
+            else if (deg <= 5) t = static_cast<float>(deg - 2) / 3.0f;
+            else t = 1.0f;
+            // dim blue -> cyan -> bright white-cyan
+            float r = 0.2f + t * 0.5f;
+            float g = 0.4f + t * 0.6f;
+            float b = 0.8f + t * 0.2f;
+            vertColors[3 * i]     = r;
+            vertColors[3 * i + 1] = g;
+            vertColors[3 * i + 2] = b;
+        }
+    } else { // COLOR_AGE
+        float invN = (n > 1) ? 1.0f / static_cast<float>(n - 1) : 0.0f;
+        for (size_t i = 0; i < n; ++i) {
+            float t = static_cast<float>(i) * invN; // 0 = oldest, 1 = newest
+            // warm orange -> cool blue
+            float r = 1.0f - t * 0.9f;
+            float g = 0.5f;
+            float b = 0.1f + t * 0.9f;
+            vertColors[3 * i]     = r;
+            vertColors[3 * i + 1] = g;
+            vertColors[3 * i + 2] = b;
+        }
+    }
+}
 
 static void generateRenderingData(const Hypergraph& graph) {
     const size_t n = graph.getNumVertices();
@@ -39,7 +80,10 @@ static void generateRenderingData(const Hypergraph& graph) {
     nodeVerts.resize(n);
     nodeIdx.resize(n);
     for (size_t i = 0; i < n; ++i) {
-        nodeVerts[i] = {{pos[i].x, pos[i].y, pos[i].z}, {CYAN_R, CYAN_G, CYAN_B}};
+        float r = vertColors[3 * i];
+        float g = vertColors[3 * i + 1];
+        float b = vertColors[3 * i + 2];
+        nodeVerts[i] = {{pos[i].x, pos[i].y, pos[i].z}, {r, g, b}};
         nodeIdx[i] = static_cast<GLuint>(i);
     }
 
@@ -51,15 +95,45 @@ static void generateRenderingData(const Hypergraph& graph) {
         if (a == b) continue;
         const glm::vec3& p1 = pos[a];
         const glm::vec3& p2 = pos[b];
-        lineVerts[li] = {{p1.x, p1.y, p1.z}, {CYAN_R, CYAN_G, CYAN_B}};
+        // Edge color = average of endpoint colors
+        float r1 = vertColors[3 * a], g1 = vertColors[3 * a + 1], b1 = vertColors[3 * a + 2];
+        float r2 = vertColors[3 * b], g2 = vertColors[3 * b + 1], b2 = vertColors[3 * b + 2];
+        float mr = (r1 + r2) * 0.5f, mg = (g1 + g2) * 0.5f, mb = (b1 + b2) * 0.5f;
+        lineVerts[li] = {{p1.x, p1.y, p1.z}, {mr, mg, mb}};
         lineIdx[li] = static_cast<GLuint>(li);
         li++;
-        lineVerts[li] = {{p2.x, p2.y, p2.z}, {CYAN_R, CYAN_G, CYAN_B}};
+        lineVerts[li] = {{p2.x, p2.y, p2.z}, {mr, mg, mb}};
         lineIdx[li] = static_cast<GLuint>(li);
         li++;
     }
     lineVerts.resize(li);
     lineIdx.resize(li);
+}
+
+static std::string takeScreenshot(GLFWwindow* window) {
+    int w, h;
+    glfwGetFramebufferSize(window, &w, &h);
+    if (w <= 0 || h <= 0) return "Screenshot failed!";
+
+    std::vector<unsigned char> pixels(w * h * 3);
+    glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+
+    // Flip vertically (OpenGL is bottom-up)
+    std::vector<unsigned char> flipped(w * h * 3);
+    for (int row = 0; row < h; ++row) {
+        std::memcpy(&flipped[row * w * 3], &pixels[(h - 1 - row) * w * 3], w * 3);
+    }
+
+    std::filesystem::create_directories("screenshots");
+    std::time_t now = std::time(nullptr);
+    char buf[128];
+    std::strftime(buf, sizeof(buf), "screenshots/screenshot_%Y%m%d_%H%M%S.png",
+                  std::localtime(&now));
+
+    if (stbi_write_png(buf, w, h, 3, flipped.data(), w * 3)) {
+        return std::string("Saved: ") + buf;
+    }
+    return "Screenshot failed!";
 }
 
 int main() {
@@ -137,10 +211,16 @@ int main() {
     bool running = false;
     int ruleInterval = 1;
     int maxEdges = 20000;
+    int colorMode = COLOR_DEGREE;
     std::string statusMessage;
 
     bool dragging = false;
     double prevMouseX = 0.0, prevMouseY = 0.0;
+
+    // FPS tracking
+    double fpsLastTime = glfwGetTime();
+    int fpsFrameCount = 0;
+    float displayFps = 0.0f;
 
     // Cache dropdown labels (avoid string concat every frame)
     std::vector<std::string> ruleLabels;
@@ -150,6 +230,15 @@ int main() {
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        // FPS calculation
+        fpsFrameCount++;
+        double fpsNow = glfwGetTime();
+        if (fpsNow - fpsLastTime >= 0.5) {
+            displayFps = static_cast<float>(fpsFrameCount) / static_cast<float>(fpsNow - fpsLastTime);
+            fpsFrameCount = 0;
+            fpsLastTime = fpsNow;
+        }
 
         int fbW, fbH;
         glfwGetFramebufferSize(window, &fbW, &fbH);
@@ -189,9 +278,11 @@ int main() {
 
         // ImGui panel
         ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSizeConstraints(ImVec2(320, 0), ImVec2(500, FLT_MAX));
-        ImGui::SetNextWindowSize(ImVec2(340, 0), ImGuiCond_FirstUseEver);
-        ImGui::Begin("Controls");
+        ImGui::SetNextWindowSizeConstraints(ImVec2(340, 0), ImVec2(520, FLT_MAX));
+        ImGui::SetNextWindowSize(ImVec2(360, 0), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Hypergraph 3D");
+        ImGui::BeginTabBar("MainTabs");
+        if (ImGui::BeginTabItem("Controls")) {
 
         // Start / Stop / Reset buttons
         bool atLimit = static_cast<int>(graph.getNumEdges()) >= maxEdges;
@@ -240,9 +331,15 @@ int main() {
         ImGui::Separator();
         ImGui::Text("Vertices: %zu", graph.getNumVertices());
         ImGui::Text("Edges: %zu / %d", graph.getNumEdges(), maxEdges);
+        ImGui::Text("FPS: %.0f", displayFps);
 
         ImGui::Separator();
         ImGui::SliderFloat("Zoom", &camera.distance, 0.5f, 100.0f, "%.1f");
+        ImGui::SliderFloat("Spread", &layout.restLength, 0.05f, 1.0f, "%.2f");
+
+        // Color mode selector
+        ImGui::Combo("Color", &colorMode, colorModeNames, IM_ARRAYSIZE(colorModeNames));
+
         ImGui::Separator();
 
         // Rule selector — disabled while running
@@ -275,6 +372,9 @@ int main() {
             }
         }
         ImGui::SameLine();
+        if (ImGui::Button("Screenshot")) {
+            statusMessage = takeScreenshot(window);
+        }
 
         static char loadPath[256] = "saves/";
         ImGui::InputText("##loadpath", loadPath, sizeof(loadPath));
@@ -297,6 +397,60 @@ int main() {
             ImGui::TextWrapped("%s", statusMessage.c_str());
         }
 
+        ImGui::EndTabItem();
+        } // end Controls tab
+
+        if (ImGui::BeginTabItem("About")) {
+            ImGui::Spacing();
+            ImGui::TextWrapped(
+                "Real-time 3D visualization of Wolfram Physics-style "
+                "hypergraph rewriting.");
+            ImGui::Spacing();
+            ImGui::Separator();
+
+            ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), "How it works");
+            ImGui::TextWrapped(
+                "The simulation starts from a single vertex with two self-loops. "
+                "Each step, the engine finds two edges that share a vertex, removes "
+                "them, creates a new vertex, and wires in replacement edges according "
+                "to the selected rule. Different rules produce very different "
+                "structures.");
+            ImGui::Spacing();
+
+            ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), "Rules");
+            ImGui::BulletText("Branching: dense, interconnected clusters");
+            ImGui::BulletText("Looping: long chains and ring structures");
+            ImGui::BulletText("Spreading: radial, star-like patterns");
+            ImGui::BulletText("Knitting: branching tree structures");
+            ImGui::BulletText("Chain: long filaments with cross-links");
+            ImGui::BulletText("Crystalline: dense lattice growth");
+            ImGui::Spacing();
+
+            ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), "Layout");
+            ImGui::TextWrapped(
+                "The layout uses two techniques: multilevel coarsening (Walshaw-style) "
+                "sets the macro structure periodically, and local-only forces run every "
+                "frame. Repulsion only acts between directly connected vertices, which "
+                "prevents the graph from collapsing into a sphere.");
+            ImGui::Spacing();
+
+            ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), "Controls");
+            ImGui::BulletText("Click and drag to orbit");
+            ImGui::BulletText("Scroll to zoom");
+            ImGui::BulletText("Start/Stop to run the simulation");
+            ImGui::BulletText("Reset to start over");
+            ImGui::Spacing();
+
+            ImGui::Separator();
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                "Hypergraph 3D v1.2.0");
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                "github.com/alexfacehead/directed-graph-3D");
+
+            ImGui::EndTabItem();
+        } // end About tab
+
+        ImGui::EndTabBar();
         ImGui::End();
 
         if (running) {
@@ -306,15 +460,18 @@ int main() {
             }
 
             size_t nv = graph.getNumVertices();
-            if (nv >= 30 && nv <= 2000 && (lastCoarsenSize == 0 || nv >= lastCoarsenSize * 2)) {
-                layout.computeInitialLayout(graph);
+            size_t coarsenCap = static_cast<size_t>(maxEdges) / 4;
+            if (coarsenCap < 2000) coarsenCap = 2000;
+            if (nv >= 30 && nv <= coarsenCap && (lastCoarsenSize == 0 || nv >= lastCoarsenSize * 3 / 2)) {
+                layout.computeInitialLayout(graph, nv);
                 lastCoarsenSize = nv;
             }
 
             layout.step(graph);
         }
 
-        // Generate rendering data (uses pre-reserved buffers)
+        // Compute colors and generate rendering data
+        computeVertexColors(graph, colorMode);
         generateRenderingData(graph);
         nodeMesh.update(nodeVerts, nodeIdx);
         edgeMesh.update(lineVerts, lineIdx);

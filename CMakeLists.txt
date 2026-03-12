@@ -75,6 +75,7 @@ add_executable(directed_graph
 target_include_directories(directed_graph PRIVATE
     src
     glad/include
+    stb
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
 )

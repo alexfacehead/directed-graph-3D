@@ -2,6 +2,10 @@
 
 Real-time 3D visualization of Wolfram Physics-style hypergraph rewriting.
 
+<p align="center">
+  <img src="assets/demo.gif" alt="Hypergraph 3D demo — Knitting rule growing a branching structure" width="640">
+</p>
+
 Starts from a single self-looping vertex, applies a rewriting rule every frame, and grows into an organic network structure. The layout algorithm is designed to reveal the topology of the graph rather than squashing it into a ball.
 
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![OpenGL 3.3](https://img.shields.io/badge/OpenGL-3.3-green)
@@ -49,12 +53,14 @@ This project implements four of those rules and visualizes the growing graph in 
 
 ### The rewriting rules
 
-All four rules match the same pattern: two edges that share a vertex, written `{{x,y},{x,z}}`. They differ in what they replace it with. Each step, the engine finds a random match, deletes those two edges, creates a new vertex `w`, and adds the replacement edges.
+All six rules match the same pattern: two edges that share a vertex, written `{{x,y},{x,z}}`. They differ in what they replace it with. Each step, the engine finds a random match, deletes those two edges, creates a new vertex `w`, and adds the replacement edges.
 
 - **Branching**: `{{x,y},{x,z}}` becomes `{{x,y},{x,w},{y,w},{z,w}}`. The classic Wolfram rule. Produces dense, interconnected structures with visible clustering.
 - **Looping**: `{{x,y},{x,z}}` becomes `{{x,y},{y,z},{x,w}}`. Creates cycles and loops. Tends to form long chains and ring-like structures.
 - **Spreading**: `{{x,y},{x,z}}` becomes `{{w,y},{w,z},{x,w}}`. Inserts a hub between x and its neighbors. Produces radial, star-like patterns.
 - **Knitting**: `{{x,y},{x,z}}` becomes `{{y,z},{x,w},{y,w}}`. Creates mesh-like interconnections. Produces beautiful branching tree structures.
+- **Chain**: `{{x,y},{x,z}}` becomes `{{x,w},{w,y},{w,z},{y,z}}`. Replaces x as the hub with w and cross-links y to z. Produces long, spindly filaments.
+- **Crystalline**: `{{x,y},{x,z}}` becomes `{{x,y},{x,z},{y,w},{z,w},{x,w}}`. Keeps the original edges and adds three new ones to w. Produces extremely dense lattice-like structures.
 
 The graph always starts from the same seed: a single vertex with two self-loops `{{0,0},{0,0}}`.
 
