@@ -8,6 +8,12 @@ Real-time 3D visualization of Wolfram Physics-style hypergraph rewriting.
 
 Starts from a single self-looping vertex, applies a rewriting rule every frame, and grows into an organic network structure. The layout algorithm is designed to reveal the topology of the graph rather than squashing it into a ball.
 
+<p align="center">
+  <img src="assets/branching-closeup.gif" alt="Branching rule — closeup detail" width="480">
+  &nbsp;&nbsp;
+  <img src="assets/branching-rotate.gif" alt="Branching rule — rotating view" width="480">
+</p>
+
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![OpenGL 3.3](https://img.shields.io/badge/OpenGL-3.3-green)
 
 ## Quick start
